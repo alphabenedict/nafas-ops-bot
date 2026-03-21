@@ -9,6 +9,7 @@ from telegram.ext import (
 )
 
 from ai_helpers import get_client_memory, search_clients
+from ai_summarizer import humanize_summary, humanize_client_info
 from config import TELEGRAM_TOKEN, ALLOWED_USER_IDS
 from sheet_helpers import (
     fetch_sheet_dataframe,
@@ -102,8 +103,9 @@ async def summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_auth(update):
         return
     try:
-        summary_text = summarize_year_to_date()
-        await update.message.reply_text(summary_text, parse_mode="Markdown")
+        raw_summary = summarize_year_to_date()
+        reply = humanize_summary(raw_summary)
+        await update.message.reply_text(reply)
     except Exception as e:
         logger.exception("Error generating year-to-date summary")
         await update.message.reply_text(f"⚠️ Terjadi kesalahan saat membuat ringkasan:\n{e}")
@@ -125,8 +127,9 @@ async def monthly_summary_handler(update: Update, context: ContextTypes.DEFAULT_
         return
 
     try:
-        summary_text = summarize_month(month_idx)
-        await update.message.reply_text(summary_text, parse_mode="Markdown")
+        raw_summary = summarize_month(month_idx)
+        reply = humanize_summary(raw_summary)
+        await update.message.reply_text(reply)
     except Exception as e:
         logger.exception("Error generating monthly summary for month %d", month_idx)
         await update.message.reply_text(f"⚠️ Gagal membuat ringkasan bulan {month_idx}:\n{e}")
@@ -175,17 +178,18 @@ async def ask_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data = get_client_memory(client_name)
 
     if data:
-        lines = [f"📋 *Memori untuk {client_name}:*"]
-        lines.append(f"• Address      : {data.get('address', '–')}")
-        lines.append(f"• Device       : {data.get('device', '–')}")
-        lines.append(f"• Last Service : {data.get('last_service', '–')}")
-        lines.append(f"• Service Type : {data.get('service_type', '–')}")
-        lines.append(f"• Technician   : {data.get('technician', '–')}")
+        lines = [f"Memori untuk {client_name}:"]
+        lines.append(f"• Address: {data.get('address', '–')}")
+        lines.append(f"• Device: {data.get('device', '–')}")
+        lines.append(f"• Last Service: {data.get('last_service', '–')}")
+        lines.append(f"• Service Type: {data.get('service_type', '–')}")
+        lines.append(f"• Technician: {data.get('technician', '–')}")
         hist = format_history(data.get("history", []), limit=3)
-        lines.append("\n📜 *Riwayat Terakhir:*")
+        lines.append("\nRiwayat Terakhir:")
         lines.append(hist)
-        reply = "\n".join(lines)
-        await update.message.reply_text(reply, parse_mode="Markdown")
+        raw_info = "\n".join(lines)
+        reply = humanize_client_info(client_name, raw_info)
+        await update.message.reply_text(reply)
     else:
         # Fuzzy search for suggestions
         suggestions = search_clients(client_name, limit=5)
