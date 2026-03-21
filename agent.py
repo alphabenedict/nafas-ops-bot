@@ -1,12 +1,13 @@
 import logging
 import re
 
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     ContextTypes,
     MessageHandler,
+    CallbackQueryHandler,
     filters,
 )
 
@@ -70,7 +71,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/ask <nama client> — Info klien.\n"
         "/sync — Sinkronisasi data dari Sheet.\n"
     )
-    await update.message.reply_text(welcome_text)
+
+    keyboard = [
+        [
+            InlineKeyboardButton("📊 Ringkasan Tahun Ini", callback_data="summary"),
+            InlineKeyboardButton("📅 Ringkasan Bulan Ini", callback_data="summary_month")
+        ],
+        [
+            InlineKeyboardButton("🔄 Sync Data Sheet", callback_data="sync")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text(welcome_text, reply_markup=reply_markup)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -259,6 +272,44 @@ async def chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(reply)
 
 
+async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle interactive button clicks."""
+    query = update.callback_query
+    await query.answer()
+
+    if not await check_auth(update):
+        return
+
+    data = query.data
+    logger.info("Button clicked: %s by %s", data, update.effective_user.username)
+
+    if data == "summary":
+        try:
+            raw_summary = summarize_year_to_date()
+            reply = humanize_summary(raw_summary)
+            await query.message.reply_text(reply)
+        except Exception as e:
+            logger.exception("Error generating year-to-date summary via button")
+            await query.message.reply_text(f"⚠️ Terjadi kesalahan saat membuat ringkasan:\n{e}")
+    elif data == "summary_month":
+        from datetime import datetime
+        month_idx = datetime.now().month
+        try:
+            raw_summary = summarize_month(month_idx)
+            reply = humanize_summary(raw_summary)
+            await query.message.reply_text(reply)
+        except Exception as e:
+            logger.exception("Error generating monthly summary via button")
+            await query.message.reply_text(f"⚠️ Gagal membuat ringkasan bulan {month_idx}:\n{e}")
+    elif data == "sync":
+        try:
+            result = sync_memory()
+            await query.message.reply_text(result)
+        except Exception as e:
+            logger.exception("Error syncing memory via button")
+            await query.message.reply_text(f"⚠️ Gagal sinkronisasi:\n{e}")
+
+
 # ── Main ─────────────────────────────────────────────────────────────
 
 def main():
@@ -274,6 +325,9 @@ def main():
         application.add_handler(CommandHandler(f"summary_{i}", monthly_summary_handler))
 
     application.add_handler(CommandHandler("ask", ask_handler))
+
+    # Button click handler
+    application.add_handler(CallbackQueryHandler(button_callback))
 
     # Free-text chat handler (must be last — catches everything not matched above)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_handler))
