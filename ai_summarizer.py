@@ -1,4 +1,6 @@
 import logging
+import json
+from datetime import datetime
 from openai import OpenAI
 from config import OPENAI_API_KEY
 
@@ -27,6 +29,28 @@ Panduan gaya bicara:
 - Akhiri dengan komentar penutup yang supportive atau actionable kalau relevan.
 - Tetap ringkas, maksimal 2-3 paragraf pendek.
 - JANGAN mengarang data. Hanya gunakan data yang diberikan.
+"""
+
+CHAT_SYSTEM_PROMPT = """\
+Kamu adalah NafasOps Bot — asisten operasional internal Nafas yang ramah dan cerdas.
+Nafas adalah perusahaan yang fokus pada kualitas udara dan menyediakan layanan perawatan \
+perangkat pemurni udara untuk berbagai klien.
+
+Kamu bisa menjawab pertanyaan seputar:
+- Ringkasan operasional (bulanan / tahunan)
+- Info klien (alamat, device, riwayat service, teknisi)
+- Data layanan (on time vs late, jenis service, dll.)
+- Pertanyaan umum tentang operasional Nafas
+
+Panduan gaya bicara:
+- Gunakan bahasa Indonesia yang santai tapi tetap profesional.
+- Jawab pertanyaan secara langsung dan natural, seperti teman kerja yang ditanya.
+- Gunakan emoji secukupnya biar lebih hidup.
+- Tetap ringkas dan to-the-point.
+- JANGAN mengarang data. Kalau tidak ada datanya, bilang jujur.
+- Kalau user menyapa atau chat ringan, balas dengan ramah dan tawarkan bantuan.
+
+Hari ini tanggal: {today}
 """
 
 
@@ -84,3 +108,47 @@ def humanize_client_info(client_name: str, raw_info: str) -> str:
     except Exception as e:
         logger.warning("AI client info failed, falling back to raw: %s", e)
         return raw_info
+
+
+def chat_with_data(user_message: str, data_context: str) -> str:
+    """Handle a free-text user message with operational data as context.
+    
+    Args:
+        user_message: The user's natural language message.
+        data_context: Pre-built string of available data (summaries, client list, etc.)
+    
+    Returns:
+        A natural language response.
+    """
+    today = datetime.now().strftime("%d %B %Y")
+    system = CHAT_SYSTEM_PROMPT.format(today=today)
+
+    try:
+        client = _get_client()
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system},
+                {
+                    "role": "user",
+                    "content": (
+                        "Berikut data operasional yang tersedia saat ini:\n\n"
+                        f"{data_context}\n\n"
+                        "---\n\n"
+                        f"Pertanyaan/pesan dari user: {user_message}"
+                    ),
+                },
+            ],
+            temperature=0.7,
+            max_tokens=800,
+        )
+        result = response.choices[0].message.content.strip()
+        logger.info("AI chat response generated successfully")
+        return result
+    except Exception as e:
+        logger.error("AI chat failed: %s", e)
+        return (
+            "Maaf, aku lagi ada kendala teknis nih 😅 "
+            "Coba lagi nanti ya, atau pakai perintah /summary atau /ask."
+        )
+

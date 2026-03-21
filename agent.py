@@ -6,10 +6,12 @@ from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     ContextTypes,
+    MessageHandler,
+    filters,
 )
 
-from ai_helpers import get_client_memory, search_clients
-from ai_summarizer import humanize_summary, humanize_client_info
+from ai_helpers import get_client_memory, search_clients, load_memory
+from ai_summarizer import humanize_summary, humanize_client_info, chat_with_data
 from config import TELEGRAM_TOKEN, ALLOWED_USER_IDS
 from sheet_helpers import (
     fetch_sheet_dataframe,
@@ -58,14 +60,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     welcome_text = (
         "Halo! Saya NafasOps‐Bot. 👋\n\n"
-        "Perintah yang tersedia:\n"
-        "/start — Tampilkan pesan ini.\n"
-        "/help — Daftar perintah.\n"
-        "/test_sheet — Uji koneksi ke Google Sheet.\n"
-        "/summary — Ringkasan tahun berjalan s.d. sekarang.\n"
+        "Kamu bisa langsung chat pakai bahasa biasa, misalnya:\n"
+        "• \"Gimana ringkasan bulan ini?\"\n"
+        "• \"Ada info soal klien Sari?\"\n"
+        "• \"Berapa total service tahun ini?\"\n\n"
+        "Atau pakai perintah:\n"
+        "/summary — Ringkasan tahun berjalan.\n"
         "/summary_1 … /summary_12 — Ringkasan per bulan.\n"
-        "/ask <nama client> — Tampilkan informasi klien.\n"
-        "/sync — Sinkronisasi data Sheet ke memori lokal.\n"
+        "/ask <nama client> — Info klien.\n"
+        "/sync — Sinkronisasi data dari Sheet.\n"
     )
     await update.message.reply_text(welcome_text)
 
@@ -74,13 +77,13 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not await check_auth(update):
         return
     help_text = (
-        "/start — Tampilkan pesan sambutan.\n"
-        "/help — Tampilkan daftar perintah.\n"
-        "/test_sheet — Uji koneksi ke Google Sheet.\n"
-        "/summary — Ringkasan tahun berjalan s.d. sekarang.\n"
-        "/summary_1 … /summary_12 — Ringkasan per bulan Januari–Desember.\n"
-        "/ask <nama client> — Tampilkan informasi klien (fuzzy search).\n"
-        "/sync — Sinkronisasi data Sheet ke memori lokal.\n"
+        "💬 Chat aja langsung pakai bahasa biasa!\n\n"
+        "Atau pakai perintah:\n"
+        "/summary — Ringkasan tahun berjalan.\n"
+        "/summary_1 … /summary_12 — Ringkasan per bulan.\n"
+        "/ask <nama client> — Info klien (fuzzy search).\n"
+        "/sync — Sinkronisasi data dari Sheet.\n"
+        "/test_sheet — Test koneksi Sheet.\n"
     )
     await update.message.reply_text(help_text)
 
@@ -206,6 +209,56 @@ async def ask_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
 
 
+def _build_data_context():
+    """Build a data context string from available summaries and client memory."""
+    parts = []
+
+    # YTD summary
+    try:
+        ytd = summarize_year_to_date()
+        parts.append("== RINGKASAN TAHUN BERJALAN ==")
+        parts.append(ytd)
+    except Exception as e:
+        logger.warning("Could not fetch YTD summary for chat context: %s", e)
+
+    # Client list from memory
+    try:
+        mem = load_memory()
+        clients = mem.get("clients", {})
+        if clients:
+            parts.append("\n== DAFTAR KLIEN (dari memori) ==")
+            for name, info in list(clients.items())[:50]:  # cap at 50
+                addr = info.get("address", "-")
+                device = info.get("device", "-")
+                last_svc = info.get("last_service", "-")
+                svc_type = info.get("service_type", "-")
+                tech = info.get("technician", "-")
+                parts.append(
+                    f"- {name}: alamat={addr}, device={device}, "
+                    f"last_service={last_svc}, type={svc_type}, tech={tech}"
+                )
+    except Exception as e:
+        logger.warning("Could not load client memory for chat context: %s", e)
+
+    return "\n".join(parts) if parts else "Tidak ada data operasional yang tersedia saat ini."
+
+
+async def chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle free-text messages using AI with operational data context."""
+    if not await check_auth(update):
+        return
+
+    user_message = update.message.text.strip()
+    if not user_message:
+        return
+
+    logger.info("Chat message from %s: %s", update.effective_user.username, user_message)
+
+    data_context = _build_data_context()
+    reply = chat_with_data(user_message, data_context)
+    await update.message.reply_text(reply)
+
+
 # ── Main ─────────────────────────────────────────────────────────────
 
 def main():
@@ -221,6 +274,9 @@ def main():
         application.add_handler(CommandHandler(f"summary_{i}", monthly_summary_handler))
 
     application.add_handler(CommandHandler("ask", ask_handler))
+
+    # Free-text chat handler (must be last — catches everything not matched above)
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_handler))
 
     logger.info("NafasOps Bot starting...")
     application.run_polling()
