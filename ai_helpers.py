@@ -19,7 +19,9 @@ def save_memory(mem: dict):
     with open(MEMORY_FILE, "w", encoding="utf-8") as f:
         json.dump(mem, f, indent=2, ensure_ascii=False)
 
-def get_client_memory(client_name: str) -> dict | None:
+from typing import Optional
+
+def get_client_memory(client_name: str) -> Optional[dict]:
     mem = load_memory()
     return mem.get("clients", {}).get(client_name)
 

@@ -28,7 +28,7 @@ def fetch_sheet_dataframe(worksheet_name="Sheet1"):
 def summarize_year_to_date():
     df = fetch_sheet_dataframe()
     df["ParsedDate"] = pd.to_datetime(df["Timestamp"], errors="coerce")
-    start = pd.Timestamp(year=2025, month=1, day=1)
+    start = pd.Timestamp(year=2026, month=1, day=1)
     end = pd.Timestamp.now()
     mask = (df["ParsedDate"] >= start) & (df["ParsedDate"] <= end)
     df_filtered = df.loc[mask].copy()
@@ -40,7 +40,7 @@ def summarize_year_to_date():
     otl_counts = df_filtered["On time / Late"].value_counts().to_dict()
 
     lines = []
-    lines.append(f"📊 *Ringkasan Nafas (01-Jan-2025 s/d {end.strftime('%d-%b-%Y')}):*")
+    lines.append(f"📊 *Ringkasan Nafas (01-Jan-2026 s/d {end.strftime('%d-%b-%Y')}):*")
     lines.append(f"• Total Record: *{total_records}*")
     lines.append("")
     lines.append("• *Jumlah per Service Type:*")
@@ -93,7 +93,7 @@ def summarize_year_to_date():
 
     return "\n".join(lines)
 
-def summarize_month(month_index: int, year: int = 2025):
+def summarize_month(month_index: int, year: int = 2026):
     df = fetch_sheet_dataframe()
     df["ParsedDate"] = pd.to_datetime(df["Timestamp"], errors="coerce")
     start = pd.Timestamp(year=year, month=month_index, day=1)

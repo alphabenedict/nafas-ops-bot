@@ -34,7 +34,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/start — Tampilkan pesan ini.\n"
         "/help — Daftar perintah.\n"
         "/test_sheet — Uji koneksi ke Google Sheet.\n"
-        "/summary — Ringkasan Tahun 2025 s.d. sekarang.\n"
+        "/summary — Ringkasan Tahun 2026 s.d. sekarang.\n"
         "/summary_1 … /summary_12 — Ringkasan per bulan.\n"
         "/ask <nama client> — Tampilkan informasi klien.\n"
     )
@@ -46,7 +46,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/start — Tampilkan pesan sambutan.\n"
         "/help — Tampilkan daftar perintah.\n"
         "/test_sheet — Uji koneksi ke Google Sheet.\n"
-        "/summary — Ringkasan Tahun 2025 s.d. sekarang.\n"
+        "/summary — Ringkasan Tahun 2026 s.d. sekarang.\n"
         "/summary_1 … /summary_12 — Ringkasan per bulan Januari-Desember.\n"
         "/ask <nama client> — Tampilkan informasi klien.\n"
     )
@@ -85,7 +85,7 @@ async def monthly_summary_handler(update: Update, context: ContextTypes.DEFAULT_
         return
 
     try:
-        summary_text = summarize_month(month_idx, year=2025)
+        summary_text = summarize_month(month_idx, year=2026)
         await update.message.reply_text(summary_text)
     except Exception as e:
         await update.message.reply_text(f"⚠️ Gagal membuat ringkasan bulan {month_idx}:\n{e}")
