@@ -1,5 +1,14 @@
+# Environment
 .env
+
+# Python
 __pycache__/
 venv/
+*.pyc
+*.pyo
+
+# Sensitive files
 *.json
-!nafasmemory.json
+
+# OS
+.DS_Store

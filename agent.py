@@ -1,78 +1,118 @@
 import logging
-import json
-import openai
 import re
+
 from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
     ContextTypes,
 )
-from ai_helpers import load_memory, get_client_memory
-from config import TELEGRAM_TOKEN, OPENAI_API_KEY
+
+from ai_helpers import get_client_memory, search_clients
+from config import TELEGRAM_TOKEN, ALLOWED_USER_IDS
 from sheet_helpers import (
     fetch_sheet_dataframe,
     summarize_year_to_date,
-    summarize_month
+    summarize_month,
+    sync_memory,
 )
 
-# Inisialisasi OpenAI
-openai.api_key = OPENAI_API_KEY
+# ── Logging ──────────────────────────────────────────────────────────
 
-# Setup logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO
+    level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
 
 
+# ── Access control ───────────────────────────────────────────────────
+
+def is_authorized(user_id: int) -> bool:
+    """Check if a Telegram user is allowed to use this bot.
+    If ALLOWED_USER_IDS is empty, all users are allowed (open mode).
+    """
+    if not ALLOWED_USER_IDS:
+        return True
+    return user_id in ALLOWED_USER_IDS
+
+
+async def check_auth(update: Update) -> bool:
+    """Returns True if authorized, otherwise sends a rejection message."""
+    if is_authorized(update.effective_user.id):
+        return True
+    await update.message.reply_text("⛔ Maaf, Anda tidak memiliki akses ke bot ini.")
+    logger.warning(
+        "Unauthorized access attempt by user %s (%s)",
+        update.effective_user.id,
+        update.effective_user.username,
+    )
+    return False
+
+
+# ── Handlers ─────────────────────────────────────────────────────────
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_auth(update):
+        return
     welcome_text = (
         "Halo! Saya NafasOps‐Bot. 👋\n\n"
         "Perintah yang tersedia:\n"
         "/start — Tampilkan pesan ini.\n"
         "/help — Daftar perintah.\n"
         "/test_sheet — Uji koneksi ke Google Sheet.\n"
-        "/summary — Ringkasan Tahun 2026 s.d. sekarang.\n"
+        "/summary — Ringkasan tahun berjalan s.d. sekarang.\n"
         "/summary_1 … /summary_12 — Ringkasan per bulan.\n"
         "/ask <nama client> — Tampilkan informasi klien.\n"
+        "/sync — Sinkronisasi data Sheet ke memori lokal.\n"
     )
     await update.message.reply_text(welcome_text)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_auth(update):
+        return
     help_text = (
         "/start — Tampilkan pesan sambutan.\n"
         "/help — Tampilkan daftar perintah.\n"
         "/test_sheet — Uji koneksi ke Google Sheet.\n"
-        "/summary — Ringkasan Tahun 2026 s.d. sekarang.\n"
-        "/summary_1 … /summary_12 — Ringkasan per bulan Januari-Desember.\n"
-        "/ask <nama client> — Tampilkan informasi klien.\n"
+        "/summary — Ringkasan tahun berjalan s.d. sekarang.\n"
+        "/summary_1 … /summary_12 — Ringkasan per bulan Januari–Desember.\n"
+        "/ask <nama client> — Tampilkan informasi klien (fuzzy search).\n"
+        "/sync — Sinkronisasi data Sheet ke memori lokal.\n"
     )
     await update.message.reply_text(help_text)
 
 
 async def test_sheet(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_auth(update):
+        return
     try:
         df = fetch_sheet_dataframe(worksheet_name="Sheet1")
         row_count = len(df)
         cols = df.columns.tolist()
         reply = f"✅ Sukses menarik data dari Google Sheet!\nJumlah baris: {row_count}\nKolom: {cols}"
     except Exception as e:
+        logger.exception("Failed to fetch sheet data")
         reply = f"⚠️ Gagal menarik data dari Sheet:\n{e}"
     await update.message.reply_text(reply)
 
 
 async def summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_auth(update):
+        return
     try:
         summary_text = summarize_year_to_date()
-        await update.message.reply_text(summary_text)
+        await update.message.reply_text(summary_text, parse_mode="Markdown")
     except Exception as e:
+        logger.exception("Error generating year-to-date summary")
         await update.message.reply_text(f"⚠️ Terjadi kesalahan saat membuat ringkasan:\n{e}")
 
 
 async def monthly_summary_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_auth(update):
+        return
+
     cmd = update.message.text
     match = re.match(r"/summary_(\d+)", cmd)
     if not match:
@@ -85,32 +125,46 @@ async def monthly_summary_handler(update: Update, context: ContextTypes.DEFAULT_
         return
 
     try:
-        summary_text = summarize_month(month_idx, year=2026)
-        await update.message.reply_text(summary_text)
+        summary_text = summarize_month(month_idx)
+        await update.message.reply_text(summary_text, parse_mode="Markdown")
     except Exception as e:
+        logger.exception("Error generating monthly summary for month %d", month_idx)
         await update.message.reply_text(f"⚠️ Gagal membuat ringkasan bulan {month_idx}:\n{e}")
 
 
+async def sync_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Explicitly sync Sheet data into local client memory."""
+    if not await check_auth(update):
+        return
+    try:
+        result = sync_memory()
+        await update.message.reply_text(result)
+    except Exception as e:
+        logger.exception("Error syncing memory")
+        await update.message.reply_text(f"⚠️ Gagal sinkronisasi:\n{e}")
+
+
 def format_history(history_list, limit=3):
-    """
-    Format maksimal `limit` entry terakhir dari history menjadi string.
-    """
+    """Format the last `limit` history entries as a readable string."""
     if not history_list:
         return "Tidak ada riwayat tersedia."
 
     recent = history_list[-limit:]
     lines = []
     for item in recent:
-        date     = item.get("date", "–")
+        date = item.get("date", "–")
         svc_type = item.get("type", "–")
-        tech     = item.get("tech", "–")
-        issue    = item.get("issue", "–")
-        solu     = item.get("solution", "–")
+        tech = item.get("tech", "–")
+        issue = item.get("issue", "–")
+        solu = item.get("solution", "–")
         lines.append(f"- {date} | {svc_type} | {tech} | {issue} → {solu}")
     return "\n".join(lines)
 
 
 async def ask_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not await check_auth(update):
+        return
+
     text = update.message.text.strip()
     parts = text.split(" ", 1)
     if len(parts) < 2 or not parts[1].strip():
@@ -119,6 +173,7 @@ async def ask_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     client_name = parts[1].strip()
     data = get_client_memory(client_name)
+
     if data:
         lines = [f"📋 *Memori untuk {client_name}:*"]
         lines.append(f"• Address      : {data.get('address', '–')}")
@@ -126,17 +181,28 @@ async def ask_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lines.append(f"• Last Service : {data.get('last_service', '–')}")
         lines.append(f"• Service Type : {data.get('service_type', '–')}")
         lines.append(f"• Technician   : {data.get('technician', '–')}")
-        # Sertakan 3 history terakhir
         hist = format_history(data.get("history", []), limit=3)
         lines.append("\n📜 *Riwayat Terakhir:*")
         lines.append(hist)
         reply = "\n".join(lines)
         await update.message.reply_text(reply, parse_mode="Markdown")
     else:
-        await update.message.reply_text(
-            f"❌ Nama klien '{client_name}' tidak ditemukan. Mungkin ada typo? Coba cek lagi."
-        )
+        # Fuzzy search for suggestions
+        suggestions = search_clients(client_name, limit=5)
+        if suggestions:
+            suggestion_lines = "\n".join(f"  • {s}" for s in suggestions)
+            await update.message.reply_text(
+                f"❌ Nama klien '{client_name}' tidak ditemukan.\n\n"
+                f"🔍 Mungkin yang Anda maksud:\n{suggestion_lines}\n\n"
+                f"Coba /ask <salah satu nama di atas>"
+            )
+        else:
+            await update.message.reply_text(
+                f"❌ Nama klien '{client_name}' tidak ditemukan dan tidak ada yang mirip."
+            )
 
+
+# ── Main ─────────────────────────────────────────────────────────────
 
 def main():
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
@@ -145,12 +211,14 @@ def main():
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("test_sheet", test_sheet))
     application.add_handler(CommandHandler("summary", summary_handler))
+    application.add_handler(CommandHandler("sync", sync_handler))
 
     for i in range(1, 13):
         application.add_handler(CommandHandler(f"summary_{i}", monthly_summary_handler))
 
     application.add_handler(CommandHandler("ask", ask_handler))
 
+    logger.info("NafasOps Bot starting...")
     application.run_polling()
 
 

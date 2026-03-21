@@ -1,8 +1,13 @@
-
 import json
 import os
+import logging
+from difflib import get_close_matches
+from typing import Optional, List
+
+logger = logging.getLogger(__name__)
 
 MEMORY_FILE = "nafasmemory.json"
+
 
 def _ensure_memory_file_exists():
     if not os.path.exists(MEMORY_FILE):
@@ -10,20 +15,31 @@ def _ensure_memory_file_exists():
         with open(MEMORY_FILE, "w", encoding="utf-8") as f:
             json.dump(initial, f, indent=2, ensure_ascii=False)
 
+
 def load_memory() -> dict:
     _ensure_memory_file_exists()
     with open(MEMORY_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
+
 def save_memory(mem: dict):
     with open(MEMORY_FILE, "w", encoding="utf-8") as f:
         json.dump(mem, f, indent=2, ensure_ascii=False)
 
-from typing import Optional
 
 def get_client_memory(client_name: str) -> Optional[dict]:
     mem = load_memory()
     return mem.get("clients", {}).get(client_name)
+
+
+def search_clients(query: str, limit: int = 5) -> List[str]:
+    """Fuzzy-search client names. Returns up to `limit` close matches."""
+    mem = load_memory()
+    all_names = list(mem.get("clients", {}).keys())
+    # Case-insensitive fuzzy match
+    matches = get_close_matches(query, all_names, n=limit, cutoff=0.4)
+    return matches
+
 
 def update_client_memory(
     client_name: str,
@@ -35,7 +51,7 @@ def update_client_memory(
     issue: str = None,
     solution: str = None,
     client_type: str = None,
-    notes: str = None
+    notes: str = None,
 ):
     mem = load_memory()
     clients = mem.setdefault("clients", {})
@@ -51,29 +67,44 @@ def update_client_memory(
             "solution": solution,
             "client_type": client_type,
             "notes": notes,
-            "history": []
+            "history": [],
         }
     else:
         existing = clients[client_name]
-        existing["address"] = address or existing.get("address")
-        existing["device"] = device or existing.get("device")
-        existing["last_service"] = last_service or existing.get("last_service")
-        existing["service_type"] = service_type or existing.get("service_type")
-        existing["technician"] = technician or existing.get("technician")
-        existing["issue"] = issue or existing.get("issue")
-        existing["solution"] = solution or existing.get("solution")
-        existing["client_type"] = client_type or existing.get("client_type")
-        existing["notes"] = notes or existing.get("notes")
+        # Use `is not None` so empty strings can intentionally clear fields
+        if address is not None:
+            existing["address"] = address
+        if device is not None:
+            existing["device"] = device
+        if last_service is not None:
+            existing["last_service"] = last_service
+        if service_type is not None:
+            existing["service_type"] = service_type
+        if technician is not None:
+            existing["technician"] = technician
+        if issue is not None:
+            existing["issue"] = issue
+        if solution is not None:
+            existing["solution"] = solution
+        if client_type is not None:
+            existing["client_type"] = client_type
+        if notes is not None:
+            existing["notes"] = notes
 
-    # Tambah ke riwayat
-    clients[client_name].setdefault("history", [])
-    clients[client_name]["history"].append({
+    # Build history entry and deduplicate before appending
+    history_entry = {
         "date": last_service,
         "type": service_type,
         "tech": technician,
         "issue": issue,
-        "solution": solution
-    })
+        "solution": solution,
+    }
+
+    history = clients[client_name].setdefault("history", [])
+
+    # Only append if this exact entry doesn't already exist
+    if history_entry not in history:
+        history.append(history_entry)
 
     save_memory(mem)
     return clients[client_name]
