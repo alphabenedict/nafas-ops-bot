@@ -22,12 +22,24 @@ def get_gspread_client():
     client = gspread.authorize(creds)
     return client
 
+import time
+_CACHE = {}
+CACHE_TTL = 300  # 5 minutes
+
 def fetch_sheet_dataframe(worksheet_name="Sheet1"):
+    now = time.time()
+    if worksheet_name in _CACHE:
+        cached_time, cached_df = _CACHE[worksheet_name]
+        if now - cached_time < CACHE_TTL:
+            return cached_df
+
     client = get_gspread_client()
     spreadsheet = client.open_by_key(SHEET_ID)
     ws = spreadsheet.worksheet(worksheet_name)
     all_records = ws.get_all_records()
     df = pd.DataFrame(all_records)
+    
+    _CACHE[worksheet_name] = (now, df)
     return df
 
 def summarize_year_to_date():
