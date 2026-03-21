@@ -13,7 +13,12 @@ SCOPES = [
 ]
 
 def get_gspread_client():
-    creds = ServiceAccountCredentials.from_json_keyfile_name(SHEET_JSON, SCOPES)
+    import json
+    if SHEET_JSON and SHEET_JSON.strip().startswith("{"):
+        creds_dict = json.loads(SHEET_JSON)
+        creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPES)
+    else:
+        creds = ServiceAccountCredentials.from_json_keyfile_name(SHEET_JSON, SCOPES)
     client = gspread.authorize(creds)
     return client
 
