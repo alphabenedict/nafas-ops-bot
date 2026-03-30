@@ -312,7 +312,8 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ── Main ─────────────────────────────────────────────────────────────
 
-def main():
+def build_application():
+    """Build and return the configured PTB Application without running it."""
     application = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
@@ -332,8 +333,12 @@ def main():
     # Free-text chat handler (must be last — catches everything not matched above)
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat_handler))
 
+    return application
+
+
+def main():
     logger.info("NafasOps Bot starting...")
-    application.run_polling()
+    build_application().run_polling()
 
 
 if __name__ == "__main__":

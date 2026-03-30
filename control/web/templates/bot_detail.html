@@ -1,0 +1,320 @@
+{% extends "base.html" %}
+{% set active_nav = 'dashboard' %}
+{% block title %}{{ bot.name }} — Orbital Command{% endblock %}
+{% block content %}
+
+<!-- Breadcrumb & Header -->
+<div class="mb-8">
+  <nav class="flex items-center gap-2 text-label-sm font-semibold uppercase tracking-wider text-on-surface-variant mb-4">
+    <a class="hover:text-primary transition-colors" href="/dashboard">Dashboard</a>
+    <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+    <span class="text-primary">Detail Bot</span>
+  </nav>
+  <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div>
+      <div class="flex items-center gap-3 mb-2">
+        <h2 class="text-3xl font-bold tracking-tight text-on-surface">{{ bot.name }}</h2>
+        {% if is_running %}
+        <span class="px-3 py-1 bg-primary-fixed text-on-primary-fixed text-[11px] font-bold uppercase tracking-widest rounded-full flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></span> Aktif
+        </span>
+        {% else %}
+        <span class="px-3 py-1 bg-secondary-fixed text-on-secondary-fixed-variant text-[11px] font-bold uppercase tracking-widest rounded-full flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 bg-slate-400 rounded-full"></span> Nonaktif
+        </span>
+        {% endif %}
+      </div>
+      {% if bot.role_description %}
+      <p class="text-on-surface-variant max-w-2xl">{{ bot.role_description }}</p>
+      {% endif %}
+    </div>
+    <div class="flex items-center gap-3">
+      {% if not bot.is_system %}
+      <a href="/bots/{{ bot.id }}/edit" class="flex items-center gap-2 px-5 py-2.5 bg-surface-container-lowest text-on-surface border border-outline-variant/30 rounded-xl font-medium hover:bg-surface-bright transition-all active:scale-95 shadow-sm">
+        <span class="material-symbols-outlined text-[20px]">edit</span> Edit
+      </a>
+      {% if is_running %}
+      <form method="post" action="/bots/{{ bot.id }}/deactivate" class="inline">
+        <button class="flex items-center gap-2 px-5 py-2.5 bg-tertiary-fixed text-on-tertiary-fixed-variant rounded-xl font-medium hover:opacity-90 transition-all active:scale-95 shadow-sm">
+          <span class="material-symbols-outlined text-[20px]">pause</span> Nonaktifkan
+        </button>
+      </form>
+      {% else %}
+      <form method="post" action="/bots/{{ bot.id }}/activate" class="inline">
+        <button class="flex items-center gap-2 px-5 py-2.5 bg-primary-container text-on-primary-container rounded-xl font-medium hover:opacity-90 transition-all active:scale-95 shadow-md shadow-primary/10">
+          <span class="material-symbols-outlined text-[20px]">bolt</span> Aktifkan
+        </button>
+      </form>
+      {% endif %}
+      <form method="post" action="/bots/{{ bot.id }}/delete" class="inline" onsubmit="return confirm('Hapus bot ini? Semua data kontak dan percakapan akan ikut terhapus.')">
+        <button class="flex items-center justify-center w-11 h-11 bg-error-container/20 text-error rounded-xl hover:bg-error-container/40 transition-all active:scale-95">
+          <span class="material-symbols-outlined">delete</span>
+        </button>
+      </form>
+      {% else %}
+      <span class="px-4 py-2 bg-violet-100 text-violet-700 rounded-xl text-sm font-bold flex items-center gap-2">
+        <span class="material-symbols-outlined text-[18px]">verified</span> Bot Sistem
+      </span>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Stats Grid -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+  <div class="bg-surface-container-lowest p-6 rounded-2xl border-l-4 border-primary shadow-sm hover:shadow-md transition-shadow">
+    <p class="text-label-sm font-bold text-on-surface-variant uppercase tracking-widest mb-1">Unique Contacts</p>
+    <h3 class="text-3xl font-bold text-on-surface">{{ stats.unique_contacts }}</h3>
+  </div>
+  <div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+    <p class="text-label-sm font-bold text-on-surface-variant uppercase tracking-widest mb-1">Total Messages</p>
+    <h3 class="text-3xl font-bold text-on-surface">{{ stats.total_messages }}</h3>
+  </div>
+  <div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+    <p class="text-label-sm font-bold text-on-surface-variant uppercase tracking-widest mb-1">Knowledge Chunks</p>
+    <h3 class="text-3xl font-bold text-on-surface">{{ knowledge | length }}</h3>
+  </div>
+  <div class="bg-surface-container-lowest p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
+    <p class="text-label-sm font-bold text-on-surface-variant uppercase tracking-widest mb-1">Dibuat Pada</p>
+    <h3 class="text-lg font-bold text-on-surface">{{ bot.created_at.strftime('%d %b %Y') }}</h3>
+  </div>
+</div>
+
+<!-- Content Sections -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+  <!-- Left Column -->
+  <div class="lg:col-span-8 space-y-8">
+
+    <!-- Connectors (system bot only) -->
+    {% if connectors %}
+    <section class="bg-surface-container-lowest p-8 rounded-[2rem] shadow-sm">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center">
+          <span class="material-symbols-outlined">cable</span>
+        </div>
+        <div>
+          <h3 class="text-xl font-bold text-on-surface">Koneksi Data</h3>
+          <p class="text-sm text-on-surface-variant">Sumber data yang terhubung ke bot ini.</p>
+        </div>
+      </div>
+      <div class="space-y-3">
+
+        <!-- Google Sheets -->
+        <div class="flex items-center justify-between p-4 rounded-2xl bg-surface-container-low border border-transparent">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none"><rect width="24" height="24" rx="4" fill="#0F9D58"/><path d="M7 7h10v10H7V7z" fill="white" opacity=".3"/><path d="M9 9h6v1.5H9V9zm0 2.5h6V13H9v-1.5zm0 2.5h4V15H9v-1.5z" fill="white"/></svg>
+            </div>
+            <div>
+              <h4 class="font-semibold text-on-surface">Google Sheets</h4>
+              {% if connectors.google_sheets.sheet_id %}
+              <p class="text-xs text-on-surface-variant font-mono">{{ connectors.google_sheets.sheet_id[:24] }}...</p>
+              {% endif %}
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            {% if connectors.google_sheets.connected %}
+            <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Terhubung
+            </span>
+            {% if connectors.google_sheets.url %}
+            <a href="{{ connectors.google_sheets.url }}" target="_blank" class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+              <span class="material-symbols-outlined text-[18px]">open_in_new</span>
+            </a>
+            {% endif %}
+            {% else %}
+            <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500">Tidak Dikonfigurasi</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- OpenAI -->
+        <div class="flex items-center justify-between p-4 rounded-2xl bg-surface-container-low border border-transparent">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+              <svg class="w-6 h-6" viewBox="0 0 24 24" fill="#10a37f"><path d="M22.28 9.98a5.82 5.82 0 0 0-.5-4.78 5.9 5.9 0 0 0-6.35-2.83A5.88 5.88 0 0 0 11 .5a5.9 5.9 0 0 0-5.63 4.1 5.88 5.88 0 0 0-3.93 2.86 5.9 5.9 0 0 0 .73 6.92 5.82 5.82 0 0 0 .5 4.78 5.9 5.9 0 0 0 6.35 2.83A5.88 5.88 0 0 0 13 23.5a5.9 5.9 0 0 0 5.63-4.1 5.88 5.88 0 0 0 3.93-2.86 5.9 5.9 0 0 0-.28-6.56z"/></svg>
+            </div>
+            <div>
+              <h4 class="font-semibold text-on-surface">OpenAI</h4>
+              <p class="text-xs text-on-surface-variant">{{ connectors.openai.model }}</p>
+            </div>
+          </div>
+          {% if connectors.openai.connected %}
+          <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-700 flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Terhubung
+          </span>
+          {% endif %}
+        </div>
+
+      </div>
+    </section>
+    {% endif %}
+
+    <!-- Knowledge Base -->
+    <section class="bg-surface-container-lowest p-8 rounded-[2rem] shadow-sm">
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h3 class="text-xl font-bold text-on-surface">Knowledge Base</h3>
+          <p class="text-sm text-on-surface-variant">Kelola data pelatihan bot melalui dokumen atau teks.</p>
+        </div>
+      </div>
+
+      <!-- Upload File -->
+      <form method="post" action="/bots/{{ bot.id }}/knowledge/upload" enctype="multipart/form-data" class="mb-6">
+        <div class="flex items-center gap-4">
+          <div class="flex-1">
+            <input type="file" name="file" accept=".pdf,.docx,.txt" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-surface-container-high file:text-on-surface hover:file:bg-surface-container-highest"/>
+          </div>
+          <button type="submit" class="px-4 py-2 bg-surface-container-high text-on-surface-variant rounded-lg text-sm font-semibold hover:bg-surface-container-highest transition-colors flex items-center gap-2">
+            <span class="material-symbols-outlined text-sm">upload</span> Unggah File
+          </button>
+        </div>
+      </form>
+
+      <!-- Existing Knowledge Chunks -->
+      {% if knowledge %}
+      <div class="space-y-3 mb-6">
+        {% for chunk in knowledge[:5] %}
+        <div class="group flex items-center justify-between p-4 rounded-2xl bg-surface-container-low hover:bg-surface-bright transition-all border border-transparent hover:border-outline-variant/20">
+          <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-primary shadow-sm">
+              <span class="material-symbols-outlined">description</span>
+            </div>
+            <div>
+              <h4 class="font-semibold text-on-surface">{{ chunk.source_name }}</h4>
+              <p class="text-xs text-on-surface-variant">Chunk #{{ chunk.chunk_index }} &middot; {{ chunk.chunk_text[:60] }}...</p>
+            </div>
+          </div>
+          <form method="post" action="/bots/{{ bot.id }}/knowledge/{{ chunk.id }}/delete" class="opacity-0 group-hover:opacity-100 transition-opacity">
+            <button class="p-2 text-on-surface-variant hover:text-error transition-colors">
+              <span class="material-symbols-outlined">delete</span>
+            </button>
+          </form>
+        </div>
+        {% endfor %}
+        {% if knowledge | length > 5 %}
+        <p class="text-xs text-on-surface-variant text-center pt-2">...dan {{ knowledge | length - 5 }} chunk lainnya</p>
+        {% endif %}
+      </div>
+      {% endif %}
+
+      <!-- Add Text -->
+      <form method="post" action="/bots/{{ bot.id }}/knowledge/text">
+        <input type="hidden" name="source_name" value="manual_text"/>
+        <textarea name="content" class="w-full h-32 bg-surface-container-high border-none rounded-2xl p-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all resize-none" placeholder="Tambahkan basis pengetahuan berupa teks di sini..."></textarea>
+        <div class="flex justify-end mt-3">
+          <button type="submit" class="px-6 py-2 bg-primary text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-all shadow-lg shadow-primary/20">Simpan Teks</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Recent Contacts Table -->
+    <section class="bg-surface-container-lowest overflow-hidden rounded-[2rem] shadow-sm">
+      <div class="p-8 pb-4 flex items-center justify-between">
+        <h3 class="text-xl font-bold text-on-surface">Kontak Terbaru</h3>
+        <a class="text-sm font-bold text-primary hover:underline flex items-center gap-1" href="/bots/{{ bot.id }}/contacts">
+          Lihat Semua <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+        </a>
+      </div>
+
+      {% if contacts_data.contacts %}
+      <table class="w-full text-left border-collapse">
+        <thead class="bg-surface-container-low">
+          <tr>
+            <th class="px-8 py-4 text-label-sm font-bold text-on-surface-variant uppercase tracking-widest">Nama Kontak</th>
+            <th class="px-6 py-4 text-label-sm font-bold text-on-surface-variant uppercase tracking-widest">Pesan</th>
+            <th class="px-6 py-4 text-label-sm font-bold text-on-surface-variant uppercase tracking-widest">Terakhir Aktif</th>
+            <th class="px-8 py-4 text-label-sm font-bold text-on-surface-variant uppercase tracking-widest">Aksi</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-surface-container">
+          {% for item in contacts_data.contacts %}
+          <tr class="hover:bg-surface-bright transition-colors">
+            <td class="px-8 py-5">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed text-[10px] font-bold">
+                  {{ (item.contact.first_name or 'U')[:1] }}{{ (item.contact.last_name or '')[:1] }}
+                </div>
+                <div>
+                  <span class="font-medium text-on-surface">{{ item.contact.first_name or '' }} {{ item.contact.last_name or '' }}</span>
+                  {% if item.contact.username %}
+                  <p class="text-xs text-slate-500">@{{ item.contact.username }}</p>
+                  {% endif %}
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-5">
+              <span class="px-2 py-0.5 bg-secondary-container text-on-secondary-container text-[10px] font-bold rounded-full">{{ item.message_count }}</span>
+            </td>
+            <td class="px-6 py-5 text-sm text-on-surface-variant">{{ item.contact.last_seen_at.strftime('%d %b %Y') }}</td>
+            <td class="px-8 py-5">
+              <a href="/bots/{{ bot.id }}/contacts/{{ item.contact.id }}" class="text-primary font-semibold text-sm hover:underline">Lihat Chat</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="p-6 flex gap-3 border-t border-surface-container">
+        <a href="/bots/{{ bot.id }}/contacts" class="px-4 py-2 bg-surface-container-high text-on-surface-variant rounded-lg text-xs font-semibold hover:bg-surface-container-highest transition-colors">Semua Kontak</a>
+        <a href="/bots/{{ bot.id }}/contacts/export/csv" class="px-4 py-2 bg-surface-container-high text-on-surface-variant rounded-lg text-xs font-semibold hover:bg-surface-container-highest transition-colors flex items-center gap-1">
+          <span class="material-symbols-outlined text-sm">download</span> Export CSV
+        </a>
+      </div>
+      {% else %}
+      <div class="text-center py-12">
+        <span class="material-symbols-outlined text-4xl text-slate-300">groups</span>
+        <p class="text-on-surface-variant text-sm mt-3">Belum ada kontak. Aktifkan bot dan mulai percakapan.</p>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+
+  <!-- Right Column: Config Summary -->
+  <aside class="lg:col-span-4 space-y-6">
+    <div class="bg-surface-container-lowest p-8 rounded-[2rem] shadow-sm sticky top-24">
+      <h3 class="text-lg font-bold text-on-surface mb-6 flex items-center gap-2">
+        <span class="material-symbols-outlined text-primary">tune</span>
+        Ringkasan Konfigurasi
+      </h3>
+      <div class="space-y-6">
+        <div>
+          <label class="text-label-sm font-bold text-on-surface-variant uppercase tracking-widest block mb-2">Model AI</label>
+          <div class="p-3 bg-surface-container rounded-xl flex items-center justify-between">
+            <span class="text-sm font-semibold">GPT-4o Mini</span>
+            <span class="material-symbols-outlined text-on-surface-variant text-[18px]">verified</span>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-label-sm font-bold text-on-surface-variant uppercase tracking-widest block mb-2">Peran</label>
+          <div class="p-3 bg-surface-container rounded-xl">
+            {% if bot.role_description %}
+            <p class="text-sm text-on-surface" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">{{ bot.role_description }}</p>
+            {% else %}
+            <p class="text-sm text-outline italic">Belum diisi</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div>
+          <label class="text-label-sm font-bold text-on-surface-variant uppercase tracking-widest block mb-2">Kepribadian</label>
+          <div class="p-3 bg-surface-container rounded-xl">
+            {% if bot.personality %}
+            <p class="text-sm text-on-surface" style="display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">{{ bot.personality }}</p>
+            {% else %}
+            <p class="text-sm text-outline italic">Belum diisi</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="pt-6 border-t border-surface-container">
+          <a href="/bots/{{ bot.id }}/edit" class="w-full py-3 bg-surface-container-high text-on-surface font-bold rounded-xl hover:bg-surface-container-highest transition-all flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-sm">edit</span> Ubah Pengaturan
+          </a>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+{% endblock %}

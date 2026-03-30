@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% set active_nav = 'dashboard' %}
+{% block title %}Dashboard — Orbital Command{% endblock %}
+{% block content %}
+
+<!-- Hero Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+  <div>
+    <h2 class="text-3xl font-bold tracking-tight text-on-surface mb-2">Ringkasan Performa</h2>
+    <p class="text-on-surface-variant max-w-md">Selamat datang kembali. Berikut adalah status terkini dari infrastruktur AI Anda.</p>
+  </div>
+  <a href="/bots/new" class="px-6 py-3 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2">
+    <span class="material-symbols-outlined">add_circle</span>
+    Buat Bot Baru
+  </a>
+</div>
+
+{% if bots_stats %}
+<!-- Bento Stats Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+  <!-- Total Bots -->
+  <div class="bg-surface-container-lowest p-6 rounded-2xl flex flex-col justify-between group hover:bg-surface-bright transition-all duration-300 relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-1 h-full bg-primary opacity-0 group-hover:opacity-100 transition-opacity"></div>
+    <div class="flex justify-between items-start mb-4">
+      <div class="p-3 bg-primary/5 text-primary rounded-xl">
+        <span class="material-symbols-outlined">smart_toy</span>
+      </div>
+      <span class="text-label-sm font-semibold text-primary uppercase tracking-wider bg-primary-fixed px-2 py-1 rounded">Total</span>
+    </div>
+    <div>
+      <p class="text-4xl font-bold text-on-surface mb-1">{{ bots_stats | length }}</p>
+      <p class="text-sm font-medium text-on-surface-variant">Total Bot Terdaftar</p>
+    </div>
+  </div>
+
+  <!-- Active Bots -->
+  <div class="bg-surface-container-lowest p-6 rounded-2xl flex flex-col justify-between group hover:bg-surface-bright transition-all duration-300 relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-1 h-full bg-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+    <div class="flex justify-between items-start mb-4">
+      <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+        <span class="material-symbols-outlined">bolt</span>
+      </div>
+      <span class="text-label-sm font-semibold text-emerald-700 uppercase tracking-wider bg-emerald-100 px-2 py-1 rounded">Live</span>
+    </div>
+    <div>
+      <p class="text-4xl font-bold text-on-surface mb-1">{{ bots_stats | selectattr('is_running') | list | length }}</p>
+      <p class="text-sm font-medium text-on-surface-variant">Bot Sedang Aktif</p>
+    </div>
+  </div>
+
+  <!-- Total Contacts -->
+  <div class="bg-surface-container-lowest p-6 rounded-2xl flex flex-col justify-between group hover:bg-surface-bright transition-all duration-300 relative overflow-hidden">
+    <div class="absolute top-0 left-0 w-1 h-full bg-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+    <div class="flex justify-between items-start mb-4">
+      <div class="p-3 bg-blue-50 text-blue-500 rounded-xl">
+        <span class="material-symbols-outlined">groups</span>
+      </div>
+      <span class="text-label-sm font-semibold text-blue-700 uppercase tracking-wider bg-blue-100 px-2 py-1 rounded">Kontak</span>
+    </div>
+    <div>
+      <p class="text-4xl font-bold text-on-surface mb-1">{{ bots_stats | sum(attribute='unique_contacts') }}</p>
+      <p class="text-sm font-medium text-on-surface-variant">Total Kontak Terlayani</p>
+    </div>
+  </div>
+</div>
+
+<!-- Bot Management Section -->
+<div class="mb-6 flex items-center justify-between">
+  <h3 class="text-xl font-semibold text-on-surface">Daftar Bot Anda</h3>
+</div>
+
+<!-- Bot Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  {% for item in bots_stats %}
+  <a href="/bots/{{ item.bot.id }}" class="bg-surface-container-lowest rounded-2xl overflow-hidden group hover:ring-2 {% if item.is_running %}hover:ring-primary/10{% else %}hover:ring-slate-200{% endif %} transition-all duration-300 block {% if not item.is_running %}opacity-80 hover:opacity-100{% endif %}">
+    <div class="h-24 {% if item.is_running %}bg-gradient-to-br from-primary/10 to-transparent{% else %}bg-slate-50{% endif %} p-6 flex items-center justify-between">
+      <div class="w-12 h-12 rounded-xl bg-white shadow-sm flex items-center justify-center">
+        <span class="material-symbols-outlined {% if item.is_running %}text-primary{% else %}text-slate-400{% endif %}">{% if item.bot.is_system %}rocket_launch{% else %}psychology{% endif %}</span>
+      </div>
+      <div class="flex flex-col items-end gap-1">
+        {% if item.bot.is_system %}
+        <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-violet-100 text-violet-700 flex items-center gap-1">
+          <span class="material-symbols-outlined text-[10px]">verified</span> System
+        </span>
+        {% endif %}
+        {% if item.is_running %}
+        <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary-fixed text-on-primary-fixed flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+          Aktif
+        </span>
+        {% else %}
+        <span class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-secondary-fixed text-on-secondary-fixed-variant flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+          Nonaktif
+        </span>
+        {% endif %}
+      </div>
+    </div>
+    <div class="p-6">
+      <h4 class="text-lg font-bold text-on-surface mb-1">{{ item.bot.name }}</h4>
+      {% if item.bot.role_description %}
+      <p class="text-sm text-on-surface-variant mb-6" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">{{ item.bot.role_description }}</p>
+      {% else %}
+      <p class="text-sm text-on-surface-variant mb-6 italic">Belum ada deskripsi peran</p>
+      {% endif %}
+      <div class="flex items-center justify-between pt-4 border-t border-slate-50">
+        <div class="flex gap-6">
+          <div class="flex flex-col">
+            <span class="text-[10px] uppercase font-bold text-slate-400">Kontak</span>
+            <span class="text-xs font-medium text-on-surface">{{ item.unique_contacts }}</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[10px] uppercase font-bold text-slate-400">Pesan</span>
+            <span class="text-xs font-medium text-on-surface">{{ item.total_messages }}</span>
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-slate-300 group-hover:text-primary transition-colors">arrow_forward</span>
+      </div>
+    </div>
+  </a>
+  {% endfor %}
+
+  <!-- Add New Card -->
+  <a href="/bots/new" class="border-2 border-dashed border-outline-variant/50 rounded-2xl flex flex-col items-center justify-center p-8 min-h-[320px] hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer group">
+    <div class="w-16 h-16 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-white transition-all">
+      <span class="material-symbols-outlined text-3xl">add</span>
+    </div>
+    <h4 class="text-lg font-bold text-on-surface">Buat Bot Baru</h4>
+    <p class="text-sm text-on-surface-variant text-center mt-2 max-w-[200px]">Mulai otomatisasi bisnis Anda dengan AI hari ini.</p>
+  </a>
+</div>
+
+{% else %}
+<!-- Empty State -->
+<div class="text-center py-20">
+  <div class="w-20 h-20 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center mx-auto mb-6">
+    <span class="material-symbols-outlined text-4xl">smart_toy</span>
+  </div>
+  <h3 class="text-2xl font-bold text-on-surface mb-2">Belum ada bot</h3>
+  <p class="text-on-surface-variant mb-8 max-w-md mx-auto">Buat bot pertamamu dan mulai kelola percakapan AI secara otomatis.</p>
+  <a href="/bots/new" class="px-8 py-4 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl font-semibold shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all inline-flex items-center gap-2">
+    <span class="material-symbols-outlined">add_circle</span>
+    Buat Bot Pertama
+  </a>
+</div>
+{% endif %}
+
+<!-- Footer -->
+<div class="mt-16 pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+  <p class="text-xs text-on-surface-variant font-medium">Orbital Command. Seluruh hak cipta dilindungi.</p>
+</div>
+{% endblock %}

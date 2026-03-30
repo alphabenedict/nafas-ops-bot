@@ -1,0 +1,192 @@
+<!doctype html>
+<html class="light" lang="id">
+<head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+  <title>{% block title %}Mission Control{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "background": "#f7f9fb",
+            "surface-variant": "#e0e3e5",
+            "on-surface": "#191c1e",
+            "outline-variant": "#c3c6d7",
+            "on-error": "#ffffff",
+            "error": "#ba1a1a",
+            "on-tertiary-fixed-variant": "#7d2d00",
+            "inverse-on-surface": "#eff1f3",
+            "on-primary-fixed-variant": "#003ea8",
+            "on-secondary-fixed-variant": "#3c475a",
+            "inverse-primary": "#b4c5ff",
+            "error-container": "#ffdad6",
+            "on-primary-fixed": "#00174b",
+            "surface-dim": "#d8dadc",
+            "secondary-container": "#d5e0f8",
+            "tertiary-fixed-dim": "#ffb596",
+            "secondary-fixed-dim": "#bcc7de",
+            "surface-container-high": "#e6e8ea",
+            "surface-container-lowest": "#ffffff",
+            "primary-container": "#2563eb",
+            "on-secondary-fixed": "#111c2d",
+            "surface": "#f7f9fb",
+            "surface-bright": "#f7f9fb",
+            "on-primary": "#ffffff",
+            "on-primary-container": "#eeefff",
+            "tertiary-container": "#bc4800",
+            "on-tertiary": "#ffffff",
+            "on-background": "#191c1e",
+            "primary-fixed": "#dbe1ff",
+            "inverse-surface": "#2d3133",
+            "on-secondary-container": "#586377",
+            "primary": "#004ac6",
+            "tertiary": "#943700",
+            "secondary-fixed": "#d8e3fb",
+            "tertiary-fixed": "#ffdbcd",
+            "surface-container": "#eceef0",
+            "surface-container-low": "#f2f4f6",
+            "surface-container-highest": "#e0e3e5",
+            "outline": "#737686",
+            "on-error-container": "#93000a",
+            "on-secondary": "#ffffff",
+            "secondary": "#545f73",
+            "on-tertiary-fixed": "#360f00",
+            "on-tertiary-container": "#ffede6",
+            "primary-fixed-dim": "#b4c5ff",
+            "on-surface-variant": "#434655",
+            "surface-tint": "#0053db"
+          },
+          fontFamily: {
+            "headline": ["Inter"],
+            "body": ["Inter"],
+            "label": ["Inter"]
+          },
+          borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+        },
+      },
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #f7f9fb; }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      vertical-align: middle;
+    }
+    .glass-header { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    .glass-panel { backdrop-filter: blur(12px); background-color: rgba(255, 255, 255, 0.8); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .input-focus-line::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      width: 0;
+      height: 2px;
+      background-color: #004ac6;
+      transition: all 0.3s ease;
+      transform: translateX(-50%);
+    }
+    .input-focus-container:focus-within .input-focus-line::after,
+    .input-container:focus-within .input-focus-line::after {
+      width: 100%;
+      left: 0;
+      transform: translateX(0);
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="bg-background text-on-surface antialiased">
+
+{% if user is defined and user %}
+{# ── Sidebar ── #}
+<aside class="h-screen w-64 fixed left-0 top-0 flex flex-col border-r border-slate-200 bg-[#f2f4f6] font-['Inter'] antialiased text-sm font-medium z-50">
+  <div class="p-6">
+    <div class="flex items-center gap-3 mb-8">
+      <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
+        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold tracking-tight text-slate-900 leading-tight">Orbital Command</h1>
+        <p class="text-[10px] uppercase tracking-widest text-slate-500 font-semibold">The Synthetic Architect</p>
+      </div>
+    </div>
+    <nav class="space-y-1">
+      <a class="flex items-center gap-3 px-4 py-3 {% if active_nav == 'dashboard' %}text-blue-700 font-semibold border-l-4 border-blue-600 bg-white/50{% else %}text-slate-600 hover:bg-white{% endif %} transition-colors duration-200" href="/dashboard">
+        <span class="material-symbols-outlined">dashboard</span>
+        <span>Dashboard</span>
+      </a>
+      <a class="flex items-center gap-3 px-4 py-3 {% if active_nav == 'create' %}text-blue-700 font-semibold border-l-4 border-blue-600 bg-white/50{% else %}text-slate-600 hover:bg-white{% endif %} transition-colors duration-200" href="/bots/new">
+        <span class="material-symbols-outlined">add_circle</span>
+        <span>Buat Bot Baru</span>
+      </a>
+    </nav>
+  </div>
+  <div class="mt-auto p-6 space-y-1 border-t border-slate-200/50">
+    <div class="flex items-center gap-3 px-4 py-3 text-slate-500 text-xs truncate">
+      <span class="material-symbols-outlined text-sm">person</span>
+      <span class="truncate">{{ user.email }}</span>
+    </div>
+    <a class="flex items-center gap-3 px-4 py-3 text-error hover:bg-error-container/20 rounded-lg transition-colors duration-200" href="/logout">
+      <span class="material-symbols-outlined">logout</span>
+      <span class="font-medium text-sm">Keluar</span>
+    </a>
+    <div class="pt-4">
+      <button class="w-full py-2 px-4 rounded-xl bg-surface-container-high text-on-surface-variant text-xs font-semibold flex items-center justify-center gap-2 hover:bg-surface-variant transition-colors">
+        <span class="material-symbols-outlined text-sm">help</span>
+        Bantuan
+      </button>
+    </div>
+  </div>
+</aside>
+
+{# ── Top Nav ── #}
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] z-40 bg-white/80 backdrop-blur-md flex justify-between items-center px-8 h-16 border-b border-slate-100">
+  <div class="flex items-center flex-1 max-w-xl">
+    {% block topnav_left %}
+    <div class="relative w-full">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-lg">search</span>
+      <input class="w-full bg-surface-container-high border-none rounded-full py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Cari bot atau aktivitas..." type="text"/>
+    </div>
+    {% endblock %}
+  </div>
+  <div class="flex items-center gap-4">
+    <button class="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:bg-surface-container-low transition-colors relative">
+      <span class="material-symbols-outlined">notifications</span>
+      <span class="absolute top-2.5 right-2.5 w-2 h-2 bg-error rounded-full border-2 border-white"></span>
+    </button>
+    <button class="w-10 h-10 flex items-center justify-center rounded-full text-slate-500 hover:bg-surface-container-low transition-colors">
+      <span class="material-symbols-outlined">settings</span>
+    </button>
+    <div class="h-8 w-[1px] bg-slate-200 mx-2"></div>
+    <div class="flex items-center gap-3 pl-2">
+      <div class="text-right hidden sm:block">
+        <p class="text-xs font-bold text-on-surface leading-none">Administrator</p>
+        <p class="text-[10px] text-slate-500 font-medium">Mission Control</p>
+      </div>
+      <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+        <span class="material-symbols-outlined text-lg">person</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+{# ── Main Content ── #}
+<main class="ml-64 min-h-screen">
+  <section class="pt-24 pb-12 px-8 max-w-7xl mx-auto">
+    {% block content %}{% endblock %}
+  </section>
+</main>
+
+{% else %}
+{# ── Unauthenticated layout ── #}
+{% block unauthenticated_content %}{% endblock %}
+{% endif %}
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

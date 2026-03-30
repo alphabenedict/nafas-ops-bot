@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% set active_nav = 'dashboard' %}
+{% block title %}Kontak — {{ bot.name }}{% endblock %}
+{% block content %}
+
+<!-- Breadcrumb & Header -->
+<div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+  <div>
+    <nav class="flex items-center gap-2 text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">
+      <a class="hover:text-primary transition-colors" href="/dashboard">Semua Bot</a>
+      <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+      <a class="hover:text-primary transition-colors" href="/bots/{{ bot.id }}">{{ bot.name }}</a>
+      <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+      <span class="text-slate-900">Kontak</span>
+    </nav>
+    <h2 class="text-3xl font-bold text-on-surface tracking-tight">Daftar Kontak</h2>
+    <p class="text-on-surface-variant text-sm mt-1">Mengelola semua pengguna yang berinteraksi dengan bot Anda.</p>
+  </div>
+  <div class="flex items-center gap-3">
+    <a href="/bots/{{ bot.id }}/contacts/export/csv" class="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-primary to-primary-container text-white rounded-xl text-sm font-semibold hover:opacity-90 transition-all shadow-md shadow-primary/10">
+      <span class="material-symbols-outlined text-lg">ios_share</span>
+      Export CSV
+    </a>
+  </div>
+</div>
+
+<!-- Stats Overview -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+  <div class="bg-surface-container-lowest p-6 rounded-xl border-l-4 border-primary shadow-sm">
+    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Total Kontak</p>
+    <p class="text-3xl font-bold text-slate-900">{{ contacts_data.total }}</p>
+  </div>
+  <div class="bg-surface-container-lowest p-6 rounded-xl border-l-4 border-secondary shadow-sm">
+    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Halaman</p>
+    <p class="text-3xl font-bold text-slate-900">{{ contacts_data.page }}</p>
+    <div class="mt-2 flex items-center gap-1 text-slate-400 text-xs">
+      <span class="material-symbols-outlined text-sm">list</span>
+      <span>{{ contacts_data.per_page }} per halaman</span>
+    </div>
+  </div>
+  <div class="bg-surface-container-lowest p-6 rounded-xl border-l-4 border-tertiary shadow-sm">
+    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Bot</p>
+    <p class="text-xl font-bold text-slate-900">{{ bot.name }}</p>
+    <div class="mt-2 flex items-center gap-1 text-slate-400 text-xs">
+      <span class="material-symbols-outlined text-sm">smart_toy</span>
+      <span>{{ bot.created_at.strftime('%d %b %Y') }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Table Section -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+  {% if contacts_data.contacts %}
+  <div class="overflow-x-auto">
+    <table class="w-full text-left border-collapse">
+      <thead>
+        <tr class="bg-surface-container-low border-b border-slate-100">
+          <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Nama & Username</th>
+          <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Telegram ID</th>
+          <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Jumlah Pesan</th>
+          <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pertama Dilihat</th>
+          <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Terakhir Aktif</th>
+          <th class="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Aksi</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-50">
+        {% for item in contacts_data.contacts %}
+        <tr class="hover:bg-surface-container-low/50 transition-colors group">
+          <td class="px-6 py-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                {{ (item.contact.first_name or 'U')[:1] }}{{ (item.contact.last_name or '')[:1] }}
+              </div>
+              <div>
+                <p class="text-sm font-semibold text-slate-900">{{ item.contact.first_name or '' }} {{ item.contact.last_name or '' }}</p>
+                {% if item.contact.username %}
+                <p class="text-xs text-slate-500">@{{ item.contact.username }}</p>
+                {% endif %}
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-4">
+            <code class="text-xs font-mono bg-surface-container text-slate-700 px-2 py-1 rounded-lg">{{ item.contact.telegram_id }}</code>
+          </td>
+          <td class="px-6 py-4">
+            <span class="px-3 py-1 bg-secondary-fixed text-on-secondary-fixed text-xs font-bold rounded-full">{{ item.message_count }}</span>
+          </td>
+          <td class="px-6 py-4 text-xs text-slate-600">{{ item.contact.first_seen_at.strftime('%d %b %Y') }}</td>
+          <td class="px-6 py-4 text-xs text-slate-600">{{ item.contact.last_seen_at.strftime('%d %b %Y') }}</td>
+          <td class="px-6 py-4 text-right">
+            <a href="/bots/{{ bot.id }}/contacts/{{ item.contact.id }}" class="px-4 py-1.5 text-xs font-bold text-primary border border-primary/20 rounded-lg hover:bg-primary hover:text-white transition-all">Lihat</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="px-6 py-6 bg-surface-container-low/30 border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+    <p class="text-xs text-slate-500 font-medium">
+      Menampilkan
+      <span class="text-slate-900 font-bold">{{ (contacts_data.page - 1) * contacts_data.per_page + 1 }}-{{ [contacts_data.page * contacts_data.per_page, contacts_data.total] | min }}</span>
+      dari <span class="text-slate-900 font-bold">{{ contacts_data.total }}</span> kontak
+    </p>
+    <div class="flex items-center gap-2">
+      {% if contacts_data.page > 1 %}
+      <a href="?page={{ contacts_data.page - 1 }}" class="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-white hover:text-primary transition-all">
+        <span class="material-symbols-outlined text-sm">chevron_left</span>
+      </a>
+      {% endif %}
+      <span class="w-8 h-8 flex items-center justify-center rounded-lg bg-primary text-white text-xs font-bold shadow-sm">{{ contacts_data.page }}</span>
+      {% if contacts_data.page * contacts_data.per_page < contacts_data.total %}
+      <a href="?page={{ contacts_data.page + 1 }}" class="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-white hover:text-primary transition-all">
+        <span class="material-symbols-outlined text-sm">chevron_right</span>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% else %}
+  <div class="text-center py-16">
+    <span class="material-symbols-outlined text-5xl text-slate-300">groups</span>
+    <p class="text-on-surface-variant text-sm mt-4">Belum ada kontak. Aktifkan bot agar orang bisa mulai mengobrol.</p>
+    <a href="/bots/{{ bot.id }}" class="mt-4 inline-flex items-center gap-2 text-primary font-semibold text-sm hover:underline">
+      <span class="material-symbols-outlined text-sm">arrow_back</span> Kembali ke Detail Bot
+    </a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

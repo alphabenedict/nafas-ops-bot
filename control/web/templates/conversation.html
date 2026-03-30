@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% set active_nav = 'dashboard' %}
+{% block title %}Percakapan — {{ contact.first_name or contact.telegram_id }}{% endblock %}
+
+{% block topnav_left %}
+<nav class="flex items-center text-xs font-semibold text-slate-500">
+  <a class="hover:text-primary transition-colors" href="/dashboard">BOTS</a>
+  <span class="mx-2 text-slate-300">/</span>
+  <a class="hover:text-primary transition-colors" href="/bots/{{ bot.id }}">{{ bot.name | upper }}</a>
+  <span class="mx-2 text-slate-300">/</span>
+  <a class="hover:text-primary transition-colors" href="/bots/{{ bot.id }}/contacts">KONTAK</a>
+  <span class="mx-2 text-slate-300">/</span>
+  <span class="text-on-surface">{{ (contact.first_name or 'User') | upper }}</span>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-12 gap-8">
+  <!-- Left Column: Chat History -->
+  <section class="col-span-12 lg:col-span-7 flex flex-col" style="min-height: calc(100vh - 10rem);">
+    <div class="mb-6 flex items-center justify-between">
+      <a href="/bots/{{ bot.id }}/contacts" class="flex items-center gap-2 text-primary font-semibold hover:underline">
+        <span class="material-symbols-outlined">arrow_back</span>
+        <span>Kembali ke Daftar Kontak</span>
+      </a>
+    </div>
+
+    <div class="bg-surface-container-lowest rounded-xl flex-1 flex flex-col overflow-hidden shadow-sm">
+      <!-- Contact Header -->
+      <div class="p-6 border-b border-surface-container flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-fixed">
+            <span class="material-symbols-outlined">person</span>
+          </div>
+          <div>
+            <h2 class="font-semibold text-on-surface">{{ contact.first_name or '' }} {{ contact.last_name or '' }}</h2>
+            <p class="text-xs text-on-surface-variant">
+              {% if contact.username %}@{{ contact.username }} &middot; {% endif %}
+              ID: {{ contact.telegram_id }}
+            </p>
+          </div>
+        </div>
+        <span class="text-[10px] font-semibold text-on-surface-variant bg-surface-container px-2 py-1 rounded">
+          {{ messages | length }} pesan
+        </span>
+      </div>
+
+      <!-- Chat Messages -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+        {% if messages %}
+        {% for msg in messages %}
+        {% if msg.direction == 'inbound' %}
+        <!-- User Message -->
+        <div class="flex gap-3 max-w-[85%]">
+          <div class="w-8 h-8 rounded-lg bg-secondary-container flex-shrink-0 flex items-center justify-center">
+            <span class="material-symbols-outlined text-on-secondary-container text-sm">person</span>
+          </div>
+          <div class="bg-surface-container-low p-4 rounded-2xl rounded-tl-none">
+            <p class="text-sm leading-relaxed text-on-surface">{{ msg.text }}</p>
+            <span class="text-[10px] text-on-surface-variant mt-2 block">{{ msg.created_at.strftime('%d %b %Y %H:%M') }}</span>
+          </div>
+        </div>
+        {% else %}
+        <!-- Bot Message -->
+        <div class="flex flex-row-reverse gap-3 max-w-[85%] ml-auto">
+          <div class="w-8 h-8 rounded-lg bg-primary/10 flex-shrink-0 flex items-center justify-center">
+            <span class="material-symbols-outlined text-primary text-sm" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+          </div>
+          <div class="bg-primary p-4 rounded-2xl rounded-tr-none">
+            <p class="text-sm leading-relaxed text-white">{{ msg.text }}</p>
+            <span class="text-[10px] text-blue-100 mt-2 block text-right">{{ msg.created_at.strftime('%d %b %Y %H:%M') }}</span>
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+        {% else %}
+        <div class="flex-1 flex items-center justify-center py-16">
+          <div class="text-center">
+            <span class="material-symbols-outlined text-4xl text-slate-300">chat</span>
+            <p class="text-on-surface-variant text-sm mt-3">Belum ada pesan.</p>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Right Column: Insights & Stats -->
+  <aside class="col-span-12 lg:col-span-5 space-y-8">
+    <!-- AI Summary Panel -->
+    <section class="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+      <div class="p-6 bg-gradient-to-r from-primary to-primary-container text-white">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="material-symbols-outlined text-sm">auto_awesome</span>
+          <span class="text-[10px] font-bold uppercase tracking-widest opacity-80">AI Analysis Insight</span>
+        </div>
+        <h3 class="text-lg font-bold">Ringkasan Percakapan</h3>
+      </div>
+      <div class="p-6">
+        {% if summary %}
+        <div class="p-4 bg-surface-container-low rounded-lg border-l-4 border-primary">
+          <p class="text-sm italic text-on-surface-variant leading-relaxed">{{ summary.summary_text }}</p>
+        </div>
+        <div class="space-y-3 mt-4">
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-on-surface-variant">Diperbarui:</span>
+            <span class="font-semibold text-on-surface">{{ summary.generated_at.strftime('%d %b %Y %H:%M') }}</span>
+          </div>
+          <div class="flex justify-between items-center text-sm">
+            <span class="text-on-surface-variant">Dari pesan:</span>
+            <span class="px-2 py-0.5 bg-primary-fixed text-on-primary-fixed text-[10px] font-bold rounded-full">{{ summary.message_count }} pesan</span>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center py-6">
+          <span class="material-symbols-outlined text-3xl text-slate-300">hourglass_empty</span>
+          <p class="text-on-surface-variant text-sm mt-3">Ringkasan akan dibuat otomatis setelah 10 pesan.</p>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+
+    <!-- Stats Panel -->
+    <section class="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
+      <h3 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-6 flex items-center gap-2">
+        <span class="material-symbols-outlined text-sm">analytics</span>
+        Metrik Interaksi
+      </h3>
+      <div class="grid grid-cols-2 gap-4 mb-8">
+        <div class="p-4 bg-surface-container-low rounded-xl">
+          <span class="text-[10px] font-bold text-on-surface-variant block mb-1">TOTAL PESAN</span>
+          <span class="text-2xl font-bold text-primary">{{ messages | length }}</span>
+        </div>
+        <div class="p-4 bg-surface-container-low rounded-xl">
+          {% set inbound_count = messages | selectattr('direction', 'equalto', 'inbound') | list | length %}
+          {% set outbound_count = messages | selectattr('direction', 'equalto', 'outbound') | list | length %}
+          <span class="text-[10px] font-bold text-on-surface-variant block mb-1">USER / BOT</span>
+          <span class="text-2xl font-bold text-secondary">{{ inbound_count }}:{{ outbound_count }}</span>
+        </div>
+      </div>
+      <div class="space-y-6">
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+            <span class="material-symbols-outlined text-on-surface-variant">calendar_today</span>
+          </div>
+          <div>
+            <span class="text-[10px] font-bold text-on-surface-variant block">PERCAKAPAN PERTAMA</span>
+            <span class="text-sm font-semibold text-on-surface">{{ contact.first_seen_at.strftime('%d %b %Y') }}</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+            <span class="material-symbols-outlined text-on-surface-variant">timer</span>
+          </div>
+          <div>
+            <span class="text-[10px] font-bold text-on-surface-variant block">TERAKHIR AKTIF</span>
+            <span class="text-sm font-semibold text-on-surface">{{ contact.last_seen_at.strftime('%d %b %Y %H:%M') }}</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+            <span class="material-symbols-outlined text-on-surface-variant">chat_bubble</span>
+          </div>
+          <div>
+            <span class="text-[10px] font-bold text-on-surface-variant block">DARI USER</span>
+            <span class="text-sm font-semibold text-on-surface">{{ inbound_count }} pesan</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+            <span class="material-symbols-outlined text-on-surface-variant">smart_toy</span>
+          </div>
+          <div>
+            <span class="text-[10px] font-bold text-on-surface-variant block">DARI BOT</span>
+            <span class="text-sm font-semibold text-on-surface">{{ outbound_count }} pesan</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  </aside>
+</div>
+{% endblock %}

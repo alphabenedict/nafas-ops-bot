@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% set active_nav = 'dashboard' %}
+{% block title %}Edit {{ bot.name }} — Orbital Command{% endblock %}
+{% block content %}
+
+<!-- Breadcrumb & Header -->
+<div class="mb-10">
+  <a class="inline-flex items-center gap-2 text-primary hover:gap-3 transition-all font-medium text-sm mb-4" href="/bots/{{ bot.id }}">
+    <span class="material-symbols-outlined text-lg">arrow_back</span>
+    <span>Kembali ke {{ bot.name }}</span>
+  </a>
+  <div class="flex justify-between items-end">
+    <div>
+      <h2 class="text-3xl font-bold text-on-surface tracking-tight mb-2">Edit Bot</h2>
+      <p class="text-on-surface-variant max-w-2xl">Sesuaikan parameter perilaku dan identitas bot Anda untuk mengoptimalkan interaksi dengan pengguna.</p>
+    </div>
+  </div>
+</div>
+
+{% if error %}
+<div class="mb-6 p-4 bg-error-container rounded-xl text-on-error-container text-sm flex items-center gap-2">
+  <span class="material-symbols-outlined text-lg">error</span> {{ error }}
+</div>
+{% endif %}
+
+<!-- Content Grid -->
+<div class="grid grid-cols-12 gap-8">
+  <!-- Main Form Column -->
+  <div class="col-span-12 lg:col-span-8 space-y-6">
+    <div class="bg-surface-container-lowest rounded-2xl p-8 space-y-8">
+      <form method="post" action="/bots/{{ bot.id }}/edit">
+        <!-- Bot Identity -->
+        <section class="mb-8">
+          <div class="flex items-center gap-3 mb-6">
+            <span class="p-2 bg-primary-fixed text-on-primary-fixed-variant rounded-lg">
+              <span class="material-symbols-outlined">smart_toy</span>
+            </span>
+            <h3 class="text-lg font-semibold text-on-surface">Identitas Bot</h3>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="flex flex-col gap-2">
+              <label class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">Nama Bot</label>
+              <div class="bg-surface-container-high rounded-xl overflow-hidden">
+                <input name="name" type="text" required value="{{ bot.name }}" class="w-full bg-transparent border-none py-3 px-4 focus:ring-0 text-on-surface"/>
+              </div>
+            </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">Telegram Token</label>
+              <div class="bg-surface-container-low rounded-xl overflow-hidden flex items-center pr-4">
+                <input type="password" readonly value="{{ bot.telegram_token }}" class="w-full bg-transparent border-none py-3 px-4 focus:ring-0 text-on-surface-variant font-mono text-xs cursor-not-allowed"/>
+                <span class="material-symbols-outlined text-slate-400 cursor-help" title="Token tidak dapat diubah.">lock</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Role & Persona -->
+        <section class="mb-8">
+          <div class="flex items-center gap-3 mb-6">
+            <span class="p-2 bg-secondary-fixed text-on-secondary-fixed-variant rounded-lg">
+              <span class="material-symbols-outlined">psychology</span>
+            </span>
+            <h3 class="text-lg font-semibold text-on-surface">Peran & Persona</h3>
+          </div>
+          <div class="space-y-6">
+            <div class="flex flex-col gap-2">
+              <label class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">Deskripsi Peran</label>
+              <div class="bg-surface-container-high rounded-xl overflow-hidden">
+                <textarea name="role_description" rows="3" class="w-full bg-transparent border-none py-3 px-4 focus:ring-0 text-on-surface resize-none">{{ bot.role_description }}</textarea>
+              </div>
+            </div>
+            <div class="flex flex-col gap-2">
+              <label class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant">Kepribadian</label>
+              <div class="bg-surface-container-high rounded-xl overflow-hidden">
+                <textarea name="personality" rows="4" class="w-full bg-transparent border-none py-3 px-4 focus:ring-0 text-on-surface resize-none">{{ bot.personality }}</textarea>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Actions -->
+        <div class="flex justify-end gap-3 pt-6 border-t border-surface-container">
+          <a href="/bots/{{ bot.id }}" class="px-6 py-2.5 rounded-xl text-secondary font-semibold hover:bg-surface-container-high transition-colors">Batal</a>
+          <button type="submit" class="px-8 py-2.5 rounded-xl bg-gradient-to-r from-primary to-primary-container text-white font-semibold shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all">Simpan Perubahan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Sidebar Info -->
+  <div class="col-span-12 lg:col-span-4 space-y-6">
+    <!-- Status Card -->
+    <div class="bg-surface-container-lowest rounded-2xl p-6 relative overflow-hidden">
+      <div class="absolute top-0 left-0 w-1 h-full {% if is_running is defined and is_running %}bg-primary{% else %}bg-slate-300{% endif %}"></div>
+      <div class="flex justify-between items-start mb-6">
+        <h4 class="font-bold text-on-surface">Status Bot</h4>
+        {% if is_running is defined and is_running %}
+        <span class="px-3 py-1 bg-primary-fixed text-on-primary-fixed text-[10px] font-bold uppercase tracking-wider rounded-full">Aktif</span>
+        {% else %}
+        <span class="px-3 py-1 bg-secondary-fixed text-on-secondary-fixed-variant text-[10px] font-bold uppercase tracking-wider rounded-full">Nonaktif</span>
+        {% endif %}
+      </div>
+      <div class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 text-on-surface-variant">
+            <span class="material-symbols-outlined text-sm">schedule</span>
+            <span class="text-xs">Dibuat</span>
+          </div>
+          <span class="text-xs font-semibold">{{ bot.created_at.strftime('%d %b %Y') }}</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2 text-on-surface-variant">
+            <span class="material-symbols-outlined text-sm">update</span>
+            <span class="text-xs">Terakhir Diubah</span>
+          </div>
+          <span class="text-xs font-semibold">{{ bot.updated_at.strftime('%d %b %Y') }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview Card -->
+    <div class="bg-surface-container rounded-2xl p-6">
+      <h4 class="font-bold text-on-surface mb-4">Pratinjau Respon</h4>
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200/50">
+        <div class="flex items-start gap-3 mb-3">
+          <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+            <span class="material-symbols-outlined text-lg">person</span>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-2xl rounded-tl-none">
+            <p class="text-[13px] text-slate-600">Halo, saya butuh bantuan...</p>
+          </div>
+        </div>
+        <div class="flex items-start gap-3 flex-row-reverse">
+          <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+            <span class="material-symbols-outlined text-lg">smart_toy</span>
+          </div>
+          <div class="bg-primary-container p-3 rounded-2xl rounded-tr-none text-white">
+            <p class="text-[13px]">Respon akan disesuaikan berdasarkan peran dan kepribadian yang Anda atur...</p>
+          </div>
+        </div>
+      </div>
+      <p class="mt-4 text-[10px] text-center text-on-surface-variant">Pratinjau didasarkan pada konfigurasi saat ini.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
