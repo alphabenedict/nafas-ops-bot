@@ -64,7 +64,10 @@ async def main():
     # Initialize database tables
     init_db()
     logger.info("Database initialized")
-    _seed_nafasops_bot()
+    try:
+        _seed_nafasops_bot()
+    except Exception as e:
+        logger.warning("Seed failed (non-fatal, will retry next deploy): %s", e)
 
     web_app = create_app()
 

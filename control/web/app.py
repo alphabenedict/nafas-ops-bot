@@ -1,6 +1,7 @@
 """FastAPI application factory."""
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from control.web.routers.auth_router import router as auth_router
@@ -12,6 +13,10 @@ from control.web.routers.knowledge_router import router as knowledge_router
 
 def create_app() -> FastAPI:
     app = FastAPI(title="NafasOps Platform", docs_url=None, redoc_url=None)
+
+    @app.get("/health", include_in_schema=False)
+    async def health_check():
+        return JSONResponse({"status": "ok"})
 
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
